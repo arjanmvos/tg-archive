@@ -38,6 +38,7 @@ class Build:
         # (Re)create the output directory.
         self._create_publish_dir()
 
+        logging.info("Fetching data")
         timeline = list(self.db.get_timeline())
         if len(timeline) == 0:
             logging.info("no data found to publish site")
@@ -51,6 +52,7 @@ class Build:
         # Queue to store the latest N items to publish in the RSS feed.
         rss_entries = deque([], self.config["rss_feed_entries"])
         fname = None
+        logging.info("Data Fetched, start building per month")
         for month in timeline:
             # Get the days + message counts for the month.
             dayline = OrderedDict()
@@ -63,6 +65,8 @@ class Build:
             total = self.db.get_message_count(
                 month.date.year, month.date.month)
             total_pages = math.ceil(total / self.config["per_page"])
+            logging.info("Building Year={} Month={} with {} messages".format(
+                month.date.year, month.date.month, total))
 
             while True:
                 messages = list(self.db.get_messages(month.date.year, month.date.month,
@@ -91,10 +95,12 @@ class Build:
         if fname:
             shutil.copy(os.path.join(self.config["publish_dir"], fname),
                         os.path.join(self.config["publish_dir"], "index.html"))
+        logging.info("HTML building finished, creating index.html")
 
         # Generate RSS feeds.
         if self.config["publish_rss_feed"]:
             self._build_rss(rss_entries, "index.rss", "index.atom")
+        logging.info("Build finished")
 
     def load_template(self, fname):
         with open(fname, "r") as f:
@@ -119,7 +125,8 @@ class Build:
                                     pagination={"current": page,
                                                 "total": total_pages},
                                     make_filename=self.make_filename,
-                                    nl2br=self._nl2br)
+                                    nl2br=self._nl2br,
+                                    timezone=timezone)
 
         with open(os.path.join(self.config["publish_dir"], fname), "w", encoding="utf8") as f:
             f.write(html)
@@ -177,16 +184,20 @@ class Build:
         return _NL2BR.sub("\n\n", s).replace("\n", "\n<br />")
 
     def _create_publish_dir(self):
+        logging.info("Handling Publish Directory")
         pubdir = self.config["publish_dir"]
 
         # Clear the output directory.
         if os.path.exists(pubdir):
+            logging.info("Deleting existing Publish Directory")
             shutil.rmtree(pubdir)
 
         # Re-create the output directory.
+        logging.info("Creating Publish Directory")
         os.mkdir(pubdir)
 
         # Copy the static directory into the output directory.
+        logging.info("Copying Static Directory into Publish Directory")
         for f in [self.config["static_dir"]]:
             target = os.path.join(pubdir, f)
             if os.path.isfile(f):
@@ -196,6 +207,8 @@ class Build:
 
         # If media downloading is enabled, copy the media directory.
         mediadir = self.config["media_dir"]
+        logging.info("Symlinking Media Directory into Publish Directory")
         if os.path.exists(mediadir):
-            shutil.copytree(mediadir, os.path.join(
+            os.symlink(os.path.abspath(mediadir), os.path.join(
                 pubdir, os.path.basename(mediadir)))
+        logging.info("Handled Publish Directory")

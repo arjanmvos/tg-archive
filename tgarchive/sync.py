@@ -93,6 +93,7 @@ class Sync:
             self.finish_takeout()
         logging.info(
             "finished. fetched {} messages. last message = {}".format(n, last_date))
+        return n
 
     def new_client(self, session, config):
         client = TelegramClient(session, config["api_id"], config["api_hash"])

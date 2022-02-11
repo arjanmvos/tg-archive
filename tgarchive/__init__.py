@@ -126,7 +126,10 @@ def main():
         ))
         try:
             s = Sync(cfg, args.session, DB(args.data))
-            s.sync(args.id, args.from_id)
+            count = s.sync(args.id, args.from_id)
+            if count < 1:
+                logging.info("not building site")
+                args.build = False
         except KeyboardInterrupt as e:
             logging.info("sync cancelled manually")
             if cfg.get("use_takeout", False):
@@ -136,7 +139,7 @@ def main():
             raise
 
     # Build static site.
-    elif args.build:
+    if args.build:
         from .build import Build
 
         logging.info("building site")

@@ -127,7 +127,7 @@ def main():
         try:
             s = Sync(cfg, args.session, DB(args.data))
             count = s.sync(args.id, args.from_id)
-            if count < 1:
+            if args.build and count < 1:
                 logging.info("not building site")
                 args.build = False
         except KeyboardInterrupt as e:
